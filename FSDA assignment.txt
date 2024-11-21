@@ -1,0 +1,110 @@
+USE DATABASE DEMO_DATABASE;
+
+--Q1. Load the given dataset into snowflake with a primary key to Order Date column.
+
+-- After cleaning the csv file in Excel I have used the following query to create the TABLE in Snowflake
+-- I loaded the csv file into the Sales table using Load table in Snowflake 
+
+
+	CREATE OR REPLACE TABLE SALES(
+	  order_id VARCHAR(15),
+	  order_date DATE PRIMARY KEY,
+	  ship_date DATE,
+	  ship_mode VARCHAR(20),
+	  customer_name VARCHAR(50),
+	  segment VARCHAR(20),
+	  state VARCHAR(50),
+	  country VARCHAR(50),
+	  market VARCHAR(50),
+	  region VARCHAR(50),
+	  product_id VARCHAR(20),
+	  category VARCHAR(50),
+	  sub_category VARCHAR(50),
+	  product_name VARCHAR(220),
+	  sales NUMBER,
+	  quantity NUMBER,
+	  discount NUMBER(8, 2),
+	  profit NUMBER(8, 2),
+	  shipping_cost NUMBER(8, 2),
+	  order_priority VARCHAR(20),
+	  year NUMBER
+	);
+
+DESCRIBE TABLE SALES; 
+----Q2. Change the Primary key to Order Id Column
+
+	ALTER TABLE SALES 
+	DROP PRIMARY KEY;
+
+	ALTER TABLE SALES
+	ADD PRIMARY KEY(order_id);
+
+--- Q3. Check the data type for Order date and Ship date and mention in what data type it should be?
+-- The data type in Snowflake for both these columns is DATE. AS I did the data-cleaning in excel wherein I changed the format for Order date and Ship date to YYYY-MM-DD. 
+-- As I understand Snowflake default DATE format is YYYY-MM-DD.
+
+--Q4. Create a new column called order_extract and extract the number after the last ‘–‘from Order ID column.
+
+	-- Method 1 
+       UPDATE SALES
+       SET ORDER_EXTRACT = SPLIT_PART(order_id, '-', -1);
+
+    -- Method 2 
+  
+	UPDATE SALES
+	SET ORDER_EXTRACT = SPLIT_PART(ORDER_ID, '-',3);
+	  
+    SELECT ORDER_ID , ORDER_EXTRACT FROM SALES; -- to check the query worked
+
+--Q5. Create a new column called Discount Flag and categorize it based on discount. Use 'Yes' if the discount > 0 else 'No'
+-- ANSWER
+
+		ALTER TABLE sales ADD COLUMN "discount_flag" VARCHAR(3);
+		
+		UPDATE SALES
+		SET discount_flag = CASE 
+				WHEN discount > 0 THEN 'Yes'
+				ELSE 'No'
+				END;
+				
+		SELECT DISCOUNT , DISCOUNT_FLAG FROM SALES LIMIT 20; -- This is to check if the above query worked     
+
+- Alternate method The below code will only create a temporary column ----
+		SELECT *,
+			CASE WHEN discount > 0 THEN 'YES'
+				 ELSE 'NO'
+			END AS discount_flag
+		FROM sales;
+-----------------------------------------------------
+
+--6. Create a new column process_days and calculate how many days it takes for each order id to process  from the order to its shipment
+
+		ALTER TABLE SALES 
+		ADD COLUMN "PROCESSING_DAYS" NUMBER(8,0) NOT NULL DEFAULT 0;
+
+		DESCRIBE TABLE SALES;
+
+		UPDATE SALES
+		SET PROCESSING_DAYS = DATEDIFF('day', order_date, ship_date);
+
+--Check the output
+		SELECT ORDER_DATE , SHIP_DATE, PROCESSING_DAYS FROM SALES;
+
+---7.  Create a new column called Rating and then based on the Process dates give rating like given below.
+--a. If process days less than or equal to 3days then rating should be 5
+--b. If process days are greater than 3 and less than or equal to 6 then rating should be 4
+--c. If process days are greater than 6 and less than or equal to 10 then ratingshould be 3
+--d. If process days are greater than 10 then the rating should be 2.
+
+		ALTER TABLE SALES
+		ADD COLUMN rating NUMBER(1,0);
+		
+		UPDATE SALES
+		SET rating = CASE 
+			WHEN processing_days <= 3 THEN 5
+			WHEN processing_days <= 6 THEN 4
+			WHEN processing_days <= 10 THEN 3
+			ELSE 2
+		  END;  
+		  
+		SELECT PROCESSING_DAYS , RATING FROM SALES_DATA; --Check the output
